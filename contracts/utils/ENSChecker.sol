@@ -5,11 +5,10 @@ import '../registry/ENS.sol';
 import '../resolvers/Resolver.sol';
 import '../registry/IReverseRegistrar.sol';
 import './ENSNamehash.sol';
-import "hardhat/console.sol";
 
 // put this file under  https://github.com/ensdomains/ens-contracts.git/contracts/utils
 // then compile and get abi
-contract EnsChecker {
+contract ENSChecker {
 
     using ENSNamehash for bytes;
 
