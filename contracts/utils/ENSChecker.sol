@@ -13,7 +13,8 @@ contract ENSChecker {
     using ENSNamehash for bytes;
 
     function getReverseNameByAddress(address ens,address reverse, address who)
-    public view
+    public
+    view
     returns (string memory)
     {
         bytes32 node = IReverseRegistrar(reverse).node(who);
@@ -25,7 +26,8 @@ contract ENSChecker {
     }
 
     function getAddrOfName(address ens,address reverse, string memory name)
-    public view
+    public
+    view
     returns (address resolvedAddr,bytes32 node)
     {
         bytes32 node = (bytes(name)).namehash();
@@ -37,13 +39,29 @@ contract ENSChecker {
         return (resolvedAddr, node);
     }
 
-    function getEnsNameMatch(address ens,address reverse, address who, string memory domain)
-    public view
+    function getAddrOfName(address ens,address reverse, string memory name, uint256 coinType)
+    public
+    view
+    returns (address resolvedAddr,bytes32 node)
+    {
+        bytes32 node = (bytes(name)).namehash();
+        address resolver = ENS(ens).resolver(node);
+        if (resolver == address(0)) {
+            return (address(0),node);
+        }
+        bytes memory resolvedAddrBytes = Resolver(resolver).addr(node, coinType);
+        address resolvedAddr = address(readBytes20(resolvedAddrBytes, 0));
+        return (resolvedAddr, node);
+    }
+
+    function getEnsNameMatch(address ens,address reverse, address who)
+    public
+    view
     returns (string memory)
     {
         string memory name = getReverseNameByAddress(ens, reverse, who);
-        if(bytes(domain).length > 0) {
-            name = string(abi.encodePacked(name, domain));
+        if(bytes(name).length == 0) {
+            return '';
         }
         bytes32 node;
         address resolvedAddr;
@@ -54,14 +72,59 @@ contract ENSChecker {
         return '';
     }
 
-    function matchNames(address ens,address reverse, address[] memory addrArr, string memory domain)
-    public view
+    function getEnsNameMatch(address ens,address reverse, address who, uint256 coinType)
+    public
+    view
+    returns (string memory)
+    {
+        string memory name = getReverseNameByAddress(ens, reverse, who);
+        if(bytes(name).length == 0) {
+            return '';
+        }
+        bytes32 node;
+        address resolvedAddr;
+        (resolvedAddr, node) = getAddrOfName(ens, reverse, name, coinType);
+        if (resolvedAddr == who) {
+            return name;
+        }
+        return '';
+    }
+
+    function matchNames(address ens, address reverse, address[] memory addrArr)
+    public
+    view
     returns (string[] memory)
     {
         string[] memory ret = new string[](addrArr.length);
         for(uint256 i=0; i<addrArr.length; i++) {
-            ret[i] = getEnsNameMatch(ens, reverse, addrArr[i], domain);
+            ret[i] = getEnsNameMatch(ens, reverse, addrArr[i]);
         }
         return ret;
+    }
+
+    function matchNames(address ens, address reverse, address[] memory addrArr, uint256 coinType)
+    public
+    view
+    returns (string[] memory)
+    {
+        string[] memory ret = new string[](addrArr.length);
+        for(uint256 i=0; i<addrArr.length; i++) {
+            ret[i] = getEnsNameMatch(ens, reverse, addrArr[i], coinType);
+        }
+        return ret;
+    }
+
+    function readBytes20(bytes memory self, uint256 idx)
+    internal
+    pure
+    returns (bytes20 ret)
+    {
+        require(idx + 20 <= self.length);
+        assembly {
+            ret := and(
+            mload(add(add(self, 32), idx)),
+            0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000000000000000000000000
+            )
+        }
     }
 }
